@@ -122,10 +122,10 @@ pub struct Repository {
 }
 
 impl Repository {
-    pub fn load(path: &Path, sort: SortCommit) -> Self {
+    pub fn load(path: &Path, git_log_args: Vec<String>) -> Self {
         check_git_repository(path);
 
-        let commits = load_all_commits(path, sort);
+        let commits = load_all_commits(path, git_log_args);
         let stashes = load_all_stashes(path);
 
         let commits = merge_stashes_to_commits(commits, stashes);
@@ -232,20 +232,18 @@ fn check_git_repository(path: &Path) {
     }
 }
 
-fn load_all_commits(path: &Path, sort: SortCommit) -> Vec<Commit> {
+fn load_all_commits(path: &Path, mut git_log_args: Vec<String>) -> Vec<Commit> {
+    
+    if git_log_args[0].is_empty() {
+        git_log_args[0] = "--all".into();
+    }
+
     let mut cmd = Command::new("git")
         .arg("log")
-        // exclude stashes and other refs
-        .arg("--branches")
-        .arg("--remotes")
-        .arg("--tags")
-        .arg(match sort {
-            SortCommit::Chronological => "--date-order",
-            SortCommit::Topological => "--topo-order",
-        })
+        .arg("-z") // use NULL char as parts delimiter
         .arg(format!("--pretty={}", load_commits_format()))
         .arg("--date=iso-strict")
-        .arg("-z") // use NUL as a delimiter
+        .args(git_log_args)
         .current_dir(path)
         .stdout(Stdio::piped())
         .spawn()

@@ -26,10 +26,6 @@ struct Args {
     #[arg(short, long, value_name = "TYPE", default_value = "auto")]
     protocol: ImageProtocolType,
 
-    /// Commit ordering algorithm
-    #[arg(short, long, value_name = "TYPE", default_value = "chrono")]
-    order: CommitOrderType,
-
     /// Commit graph image cell width
     #[arg(short, long, value_name = "TYPE")]
     graph_width: Option<GraphWidthType>,
@@ -37,6 +33,10 @@ struct Args {
     /// Preload all graph images
     #[arg(long, default_value = "false")]
     preload: bool,
+
+    /// Git log arguments
+    #[arg(long, default_value = "")]
+    git_args: Vec<String>,
 }
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -52,21 +52,6 @@ impl From<ImageProtocolType> for protocol::ImageProtocol {
             ImageProtocolType::Auto => protocol::auto_detect(),
             ImageProtocolType::Iterm => protocol::ImageProtocol::Iterm2,
             ImageProtocolType::Kitty => protocol::ImageProtocol::Kitty,
-        }
-    }
-}
-
-#[derive(Debug, Clone, ValueEnum)]
-enum CommitOrderType {
-    Chrono,
-    Topo,
-}
-
-impl From<CommitOrderType> for git::SortCommit {
-    fn from(order: CommitOrderType) -> Self {
-        match order {
-            CommitOrderType::Chrono => git::SortCommit::Chronological,
-            CommitOrderType::Topo => git::SortCommit::Topological,
         }
     }
 }
@@ -95,7 +80,7 @@ pub fn run() -> std::io::Result<()> {
     let color_set = color::ColorSet::new(&graph_config.color);
     let image_protocol = args.protocol.into();
 
-    let repository = git::Repository::load(Path::new("."), args.order.into());
+    let repository = git::Repository::load(Path::new("."), args.git_args);
 
     let graph = graph::calc_graph(&repository);
 
